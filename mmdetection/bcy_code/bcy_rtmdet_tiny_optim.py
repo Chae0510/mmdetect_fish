@@ -1,3 +1,4 @@
+#_base_ = '/workspace/mmdetection/configs/rtmdet/rtmdet_tiny_8xb32-300e_coco.py'
 _base_ = '/workspace/mmdetect_fish/mmdetection/rtmdet_tiny_8xb32-300e_coco.py'
 
 dataset_type = 'CocoDataset'
@@ -30,20 +31,16 @@ train_pipeline = [
         pad_val=114.0,
         max_cached_images=20,
         random_pop=False),
-    dict(type='YOLOXHSVRandomAug'),
     # dict(
     #     type='RandomResize',
     #     scale=(1280, 1280),
     #     ratio_range=(0.5, 2.0),
     #     keep_ratio=True),
-    #dict(type='RandomCrop', crop_size=(640, 640)),
-    
-    dict(type='RandomFlip', prob=0.5),
-    dict(  # ✅ Resize 후 강제로 크기 고정
-        type='Resize',
-        scale=(640, 640),
-        keep_ratio=True),
+    dict(type='Resize', scale=(640, 640), keep_ratio=True),
 
+    #dict(type='RandomCrop', crop_size=(640, 640)),
+    dict(type='YOLOXHSVRandomAug'),
+    dict(type='RandomFlip', prob=0.5),
     dict(type='Pad', size=(640, 640), pad_val=dict(img=(114, 114, 114))),
     dict(
         type='CachedMixUp',
@@ -96,21 +93,7 @@ val_dataloader = dict(
     )
 )
 
-test_dataloader = dict(
-    batch_size=1,
-    num_workers=2,
-    persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        metainfo=dict(classes=classes),
-        data_root=data_root,
-        ann_file='test_annotation_nocut.json',
-        data_prefix=dict(img='test/'),
-        test_mode=True,
-        pipeline=test_pipeline
-    )
-)
+test_dataloader = val_dataloader
 
 val_evaluator = dict(
     type='CocoMetric',
@@ -121,7 +104,8 @@ val_evaluator = dict(
 test_evaluator = dict(
     type='CocoMetric',
     ann_file=data_root + 'test_annotation_nocut.json',
-    metric='bbox'
+    metric='bbox',
+    classwise=True
 )
 
 train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=100, val_interval=5)
@@ -135,4 +119,34 @@ default_hooks = dict(
         save_best='auto',     
         save_last=True       
     )
+)
+
+optim_wrapper = dict(
+    optimizer=dict(type='SGD', lr=5e-4, momentum=0.9, weight_decay=0.0001),
+    paramwise_cfg=dict(norm_decay_mult=0., bias_decay_mult=0.)
+)
+
+
+param_scheduler = [
+    dict(
+        type='LinearLR',
+        start_factor=0.1,  
+        by_epoch=True,
+        begin=0,
+        end=5
+    ),
+    dict(
+        type='CosineAnnealingLR',
+        eta_min=1e-6,
+        T_max=95,
+        by_epoch=True,
+        begin=5,
+        end=100
+    )
+]
+
+randomness = dict(
+    seed=42,
+    deterministic=True,
+    diff_rank_seed=False
 )

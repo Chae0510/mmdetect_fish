@@ -2,16 +2,18 @@ import os
 from mmdet.apis import init_detector, inference_detector
 from mmdet.visualization import DetLocalVisualizer
 import mmcv
+from mmengine.structures import InstanceData
 
-config_file = '/workspace/mmdetect_fish/mmdetection/bcy_code/VFM/bcy_vfnet_r50_loss_cls_false.py'
-checkpoint_file = '/workspace/mmdetect_fish/mmdetection/work_dirs/bcy_vfnet_r50_loss_cls_false/epoch_100.pth'
+# 모델 초기화
+config_file = '/workspace/mmdetect_fish/mmdetection/bcy_code/bcy_rtmdet_tiny.py'
+checkpoint_file = '/workspace/mmdetect_fish/mmdetection/work_dirs/bcy_rtmdet_tiny/epoch_13.pth'
 model = init_detector(config_file, checkpoint_file, device='cuda:0')
 
 visualizer = DetLocalVisualizer()
 visualizer.dataset_meta = model.dataset_meta
 
 input_dir = '/workspace/fish_data/test'
-output_dir = '/workspace/fish_data/test_results'
+output_dir = '/workspace/fish_data/top1_vis'
 os.makedirs(output_dir, exist_ok=True)
 
 valid_exts = ('.jpg', '.png')
@@ -22,6 +24,16 @@ for fname in os.listdir(input_dir):
         image = mmcv.imread(img_path, channel_order='rgb')
         result = inference_detector(model, image)
 
+        instances = result.pred_instances
+        if instances.scores.numel() == 0:
+            continue  # 예측 없음
+
+        top1_index = instances.scores.argmax().item()
+        top1_instance = InstanceData()
+        for k in instances.keys():
+            top1_instance.set_field(instances.get(k)[top1_index:top1_index+1], k)
+        result.pred_instances = top1_instance
+
         out_path = os.path.join(output_dir, fname)
         visualizer.add_datasample(
             name=fname,
@@ -29,7 +41,7 @@ for fname in os.listdir(input_dir):
             data_sample=result,
             draw_gt=False,
             draw_pred=True,
-            pred_score_thr=0.5,
+            pred_score_thr=0.0,
             out_file=out_path
         )
-        print(f"Inference done for: {fname}")
+        print(f"Top-1 prediction saved: {fname}")

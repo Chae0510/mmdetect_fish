@@ -1,0 +1,4 @@
+Split,Total Images,Labeled Images,Unlabeled Images
+train,27021,2865,24156
+val,7721,854,6867
+test,397,397,0
