@@ -1,0 +1,1 @@
+python /workspace/mmdetect_fish/mmdetection_head/tools/attr_confusion_matrix.py /workspace/mmdetect_fish/mmdetection_head/log/test_results_ep29.pkl --png /workspace/mmdetect_fish/mmdetection_head/log/confmat_all.png
